@@ -1,0 +1,10 @@
+node_modules
+dist
+drizzle
+npm-debug.log
+.npmrc
+.env
+.env.*
+Dockerfile
+scripts/verify-runtime.ts
+*.tsbuildinfo
