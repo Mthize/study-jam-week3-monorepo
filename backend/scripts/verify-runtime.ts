@@ -72,22 +72,35 @@ async function requestJson<T = any>(
   };
 }
 
+const TOKEN_KEYS = ['token', 'accessToken', 'refreshToken'];
+
+function sanitizeValue(value: any): any {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeValue(item));
+  }
+
+  if (value && typeof value === 'object') {
+    const sanitized: Record<string, any> = { ...value };
+    for (const [key, val] of Object.entries(sanitized)) {
+      if (TOKEN_KEYS.some((tokenKey) => tokenKey.toLowerCase() === key.toLowerCase())) {
+        sanitized[key] = '[redacted]';
+      } else {
+        sanitized[key] = sanitizeValue(val);
+      }
+    }
+    return sanitized;
+  }
+
+  return value;
+}
+
 function sanitizeAuthResponse(response: any) {
   if (!response || typeof response !== 'object') {
     return response;
   }
 
-  if (!response.data || typeof response.data !== 'object') {
-    return response;
-  }
-
-  return {
-    ...response,
-    data: {
-      ...response.data,
-      token: response.data.token ? '[redacted]' : response.data.token,
-    },
-  };
+  const cloned = sanitizeValue(response);
+  return cloned;
 }
 
 function assertCondition(condition: unknown, message: string) {
@@ -125,10 +138,16 @@ function mergeEnv(base: NodeJS.ProcessEnv, overrides: EnvOverrides = {}) {
   return cleanEnv({ ...base, ...overrides });
 }
 
+interface StartupFailureOptions {
+  expectedExitCodes?: number | number[];
+  expectedErrorPattern?: RegExp;
+}
+
 async function expectBackendStartupFailure(
   description: string,
   env: NodeJS.ProcessEnv,
   backendEntry: string,
+  options: StartupFailureOptions = { expectedExitCodes: 1 },
 ) {
   console.log(`Validating startup failure for ${description}...`);
   const backend = spawn('node', [backendEntry], {
@@ -152,10 +171,24 @@ async function expectBackendStartupFailure(
 
     backend.on('exit', (code) => {
       clearTimeout(timeout);
-      if (code === 0) {
+      const expectedCodes = options.expectedExitCodes;
+      const exitCodesArray = Array.isArray(expectedCodes)
+        ? expectedCodes
+        : expectedCodes !== undefined
+          ? [expectedCodes]
+          : undefined;
+      const combinedLogs = logs.join('');
+      const pattern = options.expectedErrorPattern;
+
+      const matchesExitCode =
+        exitCodesArray !== undefined && code !== null && exitCodesArray.includes(code);
+      const matchesPattern = pattern ? pattern.test(combinedLogs) : false;
+      const isSuccess = matchesExitCode || (!exitCodesArray && matchesPattern);
+
+      if (code === 0 || !isSuccess) {
         reject(
           new Error(
-            `Backend exited successfully when failure was expected for ${description}. Logs:\n${logs.join('')}`,
+            `Backend exit for ${description} did not match expectation. Code: ${code}. Logs:\n${combinedLogs}`,
           ),
         );
       } else {
@@ -227,7 +260,7 @@ async function main() {
       password: testPassword,
     });
     assertCondition(!duplicateResult.ok && duplicateResult.status === 400, 'Duplicate email must fail');
-    console.log('Duplicate email check response:', duplicateResult.data);
+    console.log('Duplicate email check response:', sanitizeAuthResponse(duplicateResult.data));
 
     const loginResult = await requestJson(`${baseUrl}/auth/login`, {
       email: testEmail,
@@ -244,7 +277,7 @@ async function main() {
       !wrongPasswordResult.ok && wrongPasswordResult.status === 401,
       'Wrong password must be rejected',
     );
-    console.log('Wrong password response:', wrongPasswordResult.data);
+    console.log('Wrong password response:', sanitizeAuthResponse(wrongPasswordResult.data));
 
     const invalidPayloadResult = await requestJson(`${baseUrl}/auth/register`, {
       name: '',
@@ -256,7 +289,7 @@ async function main() {
       !invalidPayloadResult.ok && invalidPayloadResult.status === 400,
       'Invalid payload should fail validation',
     );
-    console.log('Invalid payload response:', invalidPayloadResult.data);
+    console.log('Invalid payload response:', sanitizeAuthResponse(invalidPayloadResult.data));
   } finally {
     await stopBackend(backend);
   }
@@ -265,12 +298,14 @@ async function main() {
     'missing JWT_SECRET',
     mergeEnv(envBase, { JWT_SECRET: undefined }),
     backendEntry,
+    { expectedExitCodes: 1 },
   );
 
   await expectBackendStartupFailure(
     'invalid DATABASE_URL',
     mergeEnv(envBase, { DATABASE_URL: 'postgresql://invalid-host:5432/invalid' }),
     backendEntry,
+    { expectedExitCodes: 1 },
   );
 
   await postgres.stop();
