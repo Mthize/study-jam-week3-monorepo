@@ -3,6 +3,8 @@ export interface ApiUser {
   name: string;
   surname: string;
   email: string;
+  authProvider: string;
+  avatarUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }

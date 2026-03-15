@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import './App.css'
-import { loginUser, registerUser } from './lib/api'
+import { API_BASE_URL, loginUser, registerUser } from './lib/api'
 import { AuthLayout } from './components/auth/AuthLayout'
 import { AuthBrand } from './components/auth/AuthBrand'
 import { SocialAuthButtons } from './components/auth/SocialAuthButtons'
@@ -17,6 +17,22 @@ const initialForm = {
   password: '',
 }
 
+const TOKEN_STORAGE_KEY = 'auth_token'
+
+function formatProviderLabel(provider?: string | null) {
+  if (!provider) return 'OAuth'
+  return provider.charAt(0).toUpperCase() + provider.slice(1)
+}
+
+function persistToken(token: string) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, token)
+  } catch (error) {
+    console.warn('Unable to persist auth token', error)
+  }
+}
+
 function App() {
   const [mode, setMode] = useState<Mode>('login')
   const [showEmailForm, setShowEmailForm] = useState(false)
@@ -25,6 +41,7 @@ function App() {
   const [message, setMessage] = useState('')
 
   const isRegister = mode === 'register'
+  const shouldShowStatus = Boolean(message && status !== 'idle')
 
   const copy = useMemo(() => {
     return isRegister
@@ -61,16 +78,65 @@ function App() {
     }
   }
 
+  function handleOAuthRedirect(provider: 'google' | 'github') {
+    if (!API_BASE_URL) {
+      setStatus('error')
+      setMessage('API base URL is not configured. Set VITE_API_BASE_URL to continue.')
+      return
+    }
+
+    try {
+      const target = new URL(`${API_BASE_URL}/auth/${provider}`)
+      if (typeof window !== 'undefined') {
+        target.searchParams.set('redirect', `${window.location.origin}${window.location.pathname}`)
+        setStatus('loading')
+        setMessage(`Redirecting to ${formatProviderLabel(provider)}...`)
+        window.location.href = target.toString()
+      }
+    } catch (error) {
+      setStatus('error')
+      setMessage(error instanceof Error ? error.message : 'Unable to start OAuth flow.')
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const oauthStatus = params.get('oauth')
+    if (!oauthStatus) return
+
+    if (oauthStatus === 'success') {
+      const token = params.get('token')
+      const provider = params.get('provider')
+      if (token) {
+        persistToken(token)
+        setStatus('success')
+        setMessage(`Signed in with ${formatProviderLabel(provider)}.`)
+      } else {
+        setStatus('error')
+        setMessage('OAuth login completed without a token.')
+      }
+    } else {
+      const errorMessage = params.get('message')
+      setStatus('error')
+      setMessage(errorMessage || 'OAuth login failed.')
+    }
+
+    setShowEmailForm(false)
+    const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash}`
+    window.history.replaceState({}, document.title, cleanUrl)
+  }, [])
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setStatus('loading')
     setMessage('')
     try {
-      if (isRegister) {
-        await registerUser(form)
-      } else {
-        await loginUser({ email: form.email, password: form.password })
-      }
+      const response = isRegister
+        ? await registerUser(form)
+        : await loginUser({ email: form.email, password: form.password })
+
+      persistToken(response.data.token)
       setStatus('success')
       setMessage(isRegister ? 'Registration successful.' : 'Login successful.')
     } catch (error) {
@@ -89,7 +155,21 @@ function App() {
 
       {!showEmailForm ? (
         <div className="auth-step-social">
-          <SocialAuthButtons />
+          <SocialAuthButtons
+            onGitHubClick={() => handleOAuthRedirect('github')}
+            onGoogleClick={() => handleOAuthRedirect('google')}
+            disabled={status === 'loading'}
+          />
+          {shouldShowStatus && (
+            <p
+              className={`status-message ${status}`}
+              role={status === 'error' ? 'alert' : 'status'}
+              aria-live={status === 'error' ? 'assertive' : 'polite'}
+              aria-atomic="true"
+            >
+              {message}
+            </p>
+          )}
           <AuthDivider />
           <EmailAuthButton onClick={() => setShowEmailForm(true)} />
         </div>

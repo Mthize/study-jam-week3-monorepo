@@ -8,6 +8,13 @@
       "when": 1773491782731,
       "tag": "0000_lame_harry_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773588792313,
+      "tag": "0001_romantic_angel",
+      "breakpoints": true
     }
   ]
 }

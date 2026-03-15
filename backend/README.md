@@ -1,3 +1,9 @@
+# Backend Service
+
+This NestJS service exposes the `/auth/*` endpoints that power the Study Jam authentication experience. Password-based auth remains unchanged and you can now onboard through Google or GitHub OAuth. For step‑by‑step provider configuration (required env vars, callback URLs, and Cloud Run deployment notes) read [OAUTH.md](./OAUTH.md).
+
+---
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
