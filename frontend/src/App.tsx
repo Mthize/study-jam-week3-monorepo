@@ -1,6 +1,12 @@
 import { useState, useMemo } from 'react'
 import './App.css'
 import { loginUser, registerUser } from './lib/api'
+import { AuthLayout } from './components/auth/AuthLayout'
+import { AuthBrand } from './components/auth/AuthBrand'
+import { SocialAuthButtons } from './components/auth/SocialAuthButtons'
+import { AuthDivider } from './components/auth/AuthDivider'
+import { EmailAuthButton } from './components/auth/EmailAuthButton'
+import { AuthForm } from './components/auth/AuthForm'
 
 type Mode = 'register' | 'login'
 
@@ -13,6 +19,7 @@ const initialForm = {
 
 function App() {
   const [mode, setMode] = useState<Mode>('login')
+  const [showEmailForm, setShowEmailForm] = useState(false)
   const [form, setForm] = useState(initialForm)
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
@@ -29,8 +36,8 @@ function App() {
           switchLink: 'Sign in',
         }
       : {
-          title: 'Welcome back',
-          subtitle: 'Please enter your details to sign in.',
+          title: 'Sign in to your account',
+          subtitle: 'Welcome back! Please enter your details.',
           cta: 'Sign in',
           switchText: "Don't have an account?",
           switchLink: 'Sign up',
@@ -48,6 +55,7 @@ function App() {
     setMode(nextMode)
     setStatus('idle')
     setMessage('')
+    setShowEmailForm(false)
     if (nextMode === 'login') {
       setForm((prev) => ({ ...prev, name: '', surname: '' }))
     }
@@ -72,118 +80,40 @@ function App() {
   }
 
   return (
-    <div className="auth-container">
-      <div className="auth-left">
-        <div className="auth-form-wrapper">
-          <div className="auth-header">
-            <div className="logo-placeholder"></div>
-            <h1>{copy.title}</h1>
-            <p>{copy.subtitle}</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="auth-form">
-            {isRegister && (
-              <div className="input-group-row">
-                <div className="input-group">
-                  <label htmlFor="name">First name</label>
-                  <input
-                    id="name"
-                    type="text"
-                    name="name"
-                    value={form.name}
-                    onChange={handleInput}
-                    autoComplete="given-name"
-                    placeholder="Jane"
-                    required
-                  />
-                </div>
-                <div className="input-group">
-                  <label htmlFor="surname">Surname</label>
-                  <input
-                    id="surname"
-                    type="text"
-                    name="surname"
-                    value={form.surname}
-                    onChange={handleInput}
-                    autoComplete="family-name"
-                    placeholder="Doe"
-                    required
-                  />
-                </div>
-              </div>
-            )}
-            <div className="input-group">
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleInput}
-                autoComplete="email"
-                placeholder="jane@example.com"
-                required
-              />
-            </div>
-            <div className="input-group">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleInput}
-                autoComplete={isRegister ? 'new-password' : 'current-password'}
-                placeholder="••••••••"
-                minLength={8}
-                required
-              />
-            </div>
-
-            <button className="btn-primary" type="submit" disabled={status === 'loading'}>
-              {status === 'loading' ? 'Please wait...' : copy.cta}
-            </button>
-            {message && (
-              <p
-                className={`status-message ${status}`}
-                role={status === 'error' ? 'alert' : 'status'}
-                aria-live={status === 'error' ? 'assertive' : 'polite'}
-                aria-atomic="true"
-              >
-                {message}
-              </p>
-            )}
-          </form>
-
-          <div className="auth-switch">
-            <p>
-              {copy.switchText}{' '}
-              <a href="#" onClick={handleModeChange}>
-                {copy.switchLink}
-              </a>
-            </p>
-          </div>
-        </div>
+    <AuthLayout>
+      <div className="auth-header">
+        <AuthBrand />
+        <h1>{copy.title}</h1>
+        {showEmailForm && <p>{copy.subtitle}</p>}
       </div>
 
-      <div className="auth-right">
-        <div className="visual-panel-content">
-          <div className="testimonial-card">
-            <p className="testimonial-quote">
-              "This platform has completely transformed how we build and scale our infrastructure. 
-              The performance and reliability are unmatched."
-            </p>
-            <div className="testimonial-author">
-              <div className="author-avatar"></div>
-              <div className="author-info">
-                <strong>Alex Chen</strong>
-                <span>Lead Engineer, TechFlow</span>
-              </div>
-            </div>
-          </div>
+      {!showEmailForm ? (
+        <div className="auth-step-social">
+          <SocialAuthButtons />
+          <AuthDivider />
+          <EmailAuthButton onClick={() => setShowEmailForm(true)} />
         </div>
+      ) : (
+        <AuthForm
+          isRegister={isRegister}
+          form={form}
+          handleInput={handleInput}
+          handleSubmit={handleSubmit}
+          status={status}
+          message={message}
+          cta={copy.cta}
+        />
+      )}
+
+      <div className="auth-switch">
+        <p>
+          {copy.switchText}{' '}
+          <a href="#" onClick={handleModeChange}>
+            {copy.switchLink}
+          </a>
+        </p>
       </div>
-    </div>
+    </AuthLayout>
   )
 }
 
