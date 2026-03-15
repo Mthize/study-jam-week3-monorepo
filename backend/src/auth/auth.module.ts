@@ -1,14 +1,20 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 import { DatabaseModule } from '../database/database.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { GitHubOAuthGuard } from './guards/github-oauth.guard';
+import { GoogleOAuthGuard } from './guards/google-oauth.guard';
+import { GitHubStrategy } from './strategies/github.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
     ConfigModule,
     DatabaseModule,
+    PassportModule.register({ session: false }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -27,6 +33,6 @@ import { AuthService } from './auth.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, GoogleStrategy, GitHubStrategy, GoogleOAuthGuard, GitHubOAuthGuard],
 })
 export class AuthModule {}
