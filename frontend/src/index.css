@@ -11,12 +11,12 @@
   --border-color: #27272a;
   --border-focus: #3f3f46;
   
-  font-family: 'Inter', sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   color: var(--text-primary);
   background: var(--bg-app);
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizelegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -39,7 +39,7 @@ body {
 }
 
 h1, h2, h3, h4 {
-  font-family: 'Inter', sans-serif;
+  font-family: Inter, sans-serif;
   color: var(--text-primary);
   font-weight: 600;
   letter-spacing: -0.02em;

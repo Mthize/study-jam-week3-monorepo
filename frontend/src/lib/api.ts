@@ -1,18 +1,18 @@
 import type { AuthResponse, LoginPayload, RegisterPayload } from './types';
 
-const DEFAULT_API_BASE = 'https://backend-305659654950.africa-south1.run.app';
-
+const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
 const runtimeBase =
   typeof window !== 'undefined' ? window.__APP_CONFIG__?.API_BASE_URL : undefined;
-const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
 function normalize(base?: string) {
   const trimmed = base?.trim();
   return trimmed ? trimmed.replace(/\/$/, '') : undefined;
 }
 
+const defaultBase = 'http://localhost:3000';
+
 export const API_BASE_URL =
-  normalize(runtimeBase) ?? normalize(envBase) ?? DEFAULT_API_BASE;
+  normalize(envBase) ?? normalize(runtimeBase) ?? normalize(defaultBase);
 
 async function parseResponse(response: Response) {
   const contentType = response.headers.get('content-type') ?? '';
@@ -23,6 +23,10 @@ async function parseResponse(response: Response) {
 }
 
 async function request<T>(path: string, init: RequestInit): Promise<T> {
+  if (!API_BASE_URL) {
+    throw new Error('API base URL is not configured. Set VITE_API_BASE_URL or PUBLIC_API_BASE_URL.');
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
