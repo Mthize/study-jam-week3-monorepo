@@ -12,6 +12,8 @@ This folder contains the assets needed to ship the NestJS backend to Google Clou
 - Secret Manager entries:
   - `backend-jwt-secret` containing the JWT signing secret.
   - `backend-db-password` containing the `backend_app` DB password.
+  - optional: set `DB_PASSWORD_VERSION` / `JWT_SECRET_VERSION` (defaults to `latest`).
+- Configure `FRONTEND_ORIGINS` with comma-separated origins (e.g. `https://frontend.example.com,http://localhost:5173`) so CORS stays locked down.
 
 ### 2. Artifact Registry & Image Build
 
@@ -27,6 +29,9 @@ export DB_NAME="study_jam"
 export DB_USER="backend_app"
 export DB_PASSWORD_SECRET="backend-db-password"
 export JWT_SECRET_SECRET="backend-jwt-secret"
+export DB_PASSWORD_VERSION="latest"   # optional override
+export JWT_SECRET_VERSION="latest"     # optional override
+export FRONTEND_ORIGINS="https://frontend.example.com,http://localhost:5173"
 # optional overrides
 # export IMAGE_TAG="manual-tag"
 # export ALLOW_UNAUTHENTICATED="true"
