@@ -2,10 +2,17 @@ import type { AuthResponse, LoginPayload, RegisterPayload } from './types';
 
 const DEFAULT_API_BASE = 'https://backend-305659654950.africa-south1.run.app';
 
+const runtimeBase =
+  typeof window !== 'undefined' ? window.__APP_CONFIG__?.API_BASE_URL : undefined;
 const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
-export const API_BASE_URL = (envBase && envBase.trim())
-  ? envBase.replace(/\/$/, '')
-  : DEFAULT_API_BASE;
+
+function normalize(base?: string) {
+  const trimmed = base?.trim();
+  return trimmed ? trimmed.replace(/\/$/, '') : undefined;
+}
+
+export const API_BASE_URL =
+  normalize(runtimeBase) ?? normalize(envBase) ?? DEFAULT_API_BASE;
 
 async function parseResponse(response: Response) {
   const contentType = response.headers.get('content-type') ?? '';

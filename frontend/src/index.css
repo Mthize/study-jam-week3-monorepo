@@ -1,57 +1,56 @@
-@import 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap';
+@import 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap';
 
 :root {
-  --bg-deep: #04040d;
-  --bg-card: #0f172a;
-  --bg-card-2: #111c30;
-  --bg-panel: rgba(14, 23, 41, 0.7);
-  --text-main: #e0e7ff;
-  --text-muted: #94a3b8;
-  --accent: #f97316;
-  --accent-soft: rgba(249, 115, 22, 0.1);
-  --accent-strong: rgba(249, 115, 22, 0.35);
-  --border: rgba(148, 163, 184, 0.2);
-  --border-strong: rgba(148, 163, 184, 0.35);
-  --shadow-soft: 0 20px 60px rgba(2, 6, 23, 0.7);
-  font-family: 'IBM Plex Sans', sans-serif;
+  --bg-app: #09090b; /* Very dark charcoal/black */
+  --bg-surface: #18181b; /* Slightly lighter gray for cards/inputs */
+  --bg-surface-hover: #27272a;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --accent-color: #f59e0b; /* Warm amber */
+  --accent-color-hover: #d97706;
+  --border-color: #27272a;
+  --border-focus: #3f3f46;
+  
+  font-family: 'Inter', sans-serif;
   font-size: 16px;
-  line-height: 1.6;
-  color: var(--text-main);
-  background: var(--bg-deep);
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-app);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
+  background-color: var(--bg-app);
   min-height: 100vh;
-  background: radial-gradient(circle at top, rgba(15, 52, 96, 0.5), rgba(4, 4, 13, 1));
-  color: var(--text-main);
 }
 
 #root {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-h1,
-h2,
-h3,
-h4 {
-  font-family: 'Space Grotesk', sans-serif;
+h1, h2, h3, h4 {
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin: 0;
-  color: var(--text-main);
 }
 
 p {
+  color: var(--text-secondary);
   margin: 0;
-  color: var(--text-muted);
 }
 
-button,
-input {
+button, input {
   font: inherit;
 }
