@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
+
+:root {
+  --bg-deep: #04040d;
+  --bg-card: #0f172a;
+  --bg-card-2: #111c30;
+  --bg-panel: rgba(14, 23, 41, 0.7);
+  --text-main: #e0e7ff;
+  --text-muted: #94a3b8;
+  --accent: #f97316;
+  --accent-soft: rgba(249, 115, 22, 0.1);
+  --accent-strong: rgba(249, 115, 22, 0.35);
+  --border: rgba(148, 163, 184, 0.2);
+  --border-strong: rgba(148, 163, 184, 0.35);
+  --shadow-soft: 0 20px 60px rgba(2, 6, 23, 0.7);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-main);
+  background: var(--bg-deep);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(15, 52, 96, 0.5), rgba(4, 4, 13, 1));
+  color: var(--text-main);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  margin: 0;
+  color: var(--text-main);
+}
+
+p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+button,
+input {
+  font: inherit;
+}

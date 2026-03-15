@@ -25,6 +25,8 @@ spec:
               value: ${DB_SOCKET_PATH}
             - name: DB_INSTANCE_CONNECTION_NAME
               value: ${PROJECT_ID}:${REGION}:${CLOUD_SQL_INSTANCE}
+            - name: FRONTEND_ORIGINS
+              value: ${FRONTEND_ORIGINS}
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:

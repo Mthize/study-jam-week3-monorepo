@@ -3,50 +3,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
+import { buildConnectionStringFromEnv } from './utils/connection-string';
 
 export const DRIZZLE = Symbol('DRIZZLE_CONNECTION');
-
-function encode(value: string) {
-  return encodeURIComponent(value);
-}
-
-function buildConnectionString(configService: ConfigService, logger: Logger) {
-  const directUrl = configService.get<string>('DATABASE_URL');
-  if (directUrl) {
-    return directUrl;
-  }
-
-  const dbName = configService.get<string>('DB_NAME');
-  const dbUser = configService.get<string>('DB_USER');
-  const dbPassword = configService.get<string>('DB_PASSWORD');
-
-  if (!dbName || !dbUser || !dbPassword) {
-    logger.error('Database configuration missing. Provide DATABASE_URL or DB_* variables.');
-    throw new Error(
-      'Startup failed: Provide DATABASE_URL or DB_NAME, DB_USER, DB_PASSWORD, and host details.',
-    );
-  }
-
-  const instanceConnectionName = configService.get<string>('DB_INSTANCE_CONNECTION_NAME');
-  if (instanceConnectionName) {
-    const socketPath = configService.get<string>('DB_SOCKET_PATH') ?? '/cloudsql';
-    const socketHost = `${socketPath}/${instanceConnectionName}`;
-    logger.log('Building PostgreSQL connection string using Cloud SQL socket path.');
-    return `postgresql://${encode(dbUser)}:${encode(dbPassword)}@/${dbName}?host=${encode(socketHost)}`;
-  }
-
-  const dbHost = configService.get<string>('DB_HOST');
-  const dbPort = configService.get<string>('DB_PORT') ?? '5432';
-
-  if (!dbHost) {
-    logger.error('DB_HOST is required when not using Cloud SQL sockets.');
-    throw new Error(
-      'Startup failed: Provide DATABASE_URL or DB_HOST/DB_PORT along with DB_NAME, DB_USER, DB_PASSWORD.',
-    );
-  }
-
-  return `postgresql://${encode(dbUser)}:${encode(dbPassword)}@${dbHost}:${dbPort}/${dbName}`;
-}
 
 @Module({
   imports: [ConfigModule],
@@ -56,7 +15,19 @@ function buildConnectionString(configService: ConfigService, logger: Logger) {
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
         const logger = new Logger('DatabaseModule');
-        const connectionString = buildConnectionString(configService, logger);
+        const connectionString = buildConnectionStringFromEnv(
+          {
+            DATABASE_URL: configService.get<string>('DATABASE_URL'),
+            DB_NAME: configService.get<string>('DB_NAME'),
+            DB_USER: configService.get<string>('DB_USER'),
+            DB_PASSWORD: configService.get<string>('DB_PASSWORD'),
+            DB_INSTANCE_CONNECTION_NAME: configService.get<string>('DB_INSTANCE_CONNECTION_NAME'),
+            DB_SOCKET_PATH: configService.get<string>('DB_SOCKET_PATH'),
+            DB_HOST: configService.get<string>('DB_HOST'),
+            DB_PORT: configService.get<string>('DB_PORT'),
+          },
+          logger,
+        );
 
         const pool = new Pool({ connectionString });
         try {

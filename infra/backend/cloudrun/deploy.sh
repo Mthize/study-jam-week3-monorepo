@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../" && pwd)"
 BACKEND_DIR="${REPO_ROOT}/backend"
 
 : "${PROJECT_ID:?Set PROJECT_ID}"
@@ -15,6 +15,9 @@ DB_USER="${DB_USER:-backend_app}"
 DB_SOCKET_PATH="${DB_SOCKET_PATH:-/cloudsql}"
 DB_PASSWORD_SECRET="${DB_PASSWORD_SECRET:-backend-db-password}"
 JWT_SECRET_SECRET="${JWT_SECRET_SECRET:-backend-jwt-secret}"
+DB_PASSWORD_VERSION="${DB_PASSWORD_VERSION:-latest}"
+JWT_SECRET_VERSION="${JWT_SECRET_VERSION:-latest}"
+FRONTEND_ORIGINS="${FRONTEND_ORIGINS:-}"
 IMAGE_TAG="${IMAGE_TAG:-$(git -C "${REPO_ROOT}" rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)}"
 ALLOW_UNAUTHENTICATED="${ALLOW_UNAUTHENTICATED:-true}"
 
@@ -45,6 +48,10 @@ ENV_VARS=(
   "DB_SOCKET_PATH=${DB_SOCKET_PATH}"
   "DB_INSTANCE_CONNECTION_NAME=${PROJECT_ID}:${REGION}:${CLOUD_SQL_INSTANCE}"
 )
+
+if [[ -n "${FRONTEND_ORIGINS}" ]]; then
+  ENV_VARS+=("FRONTEND_ORIGINS=${FRONTEND_ORIGINS}")
+fi
 
 echo "Deploying Cloud Run service ${SERVICE_NAME}..."
 gcloud run deploy "${SERVICE_NAME}" \
