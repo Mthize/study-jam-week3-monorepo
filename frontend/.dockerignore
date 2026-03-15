@@ -6,3 +6,10 @@ Dockerfile
 *.log
 tmp
 coverage
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.*.local
+.envrc

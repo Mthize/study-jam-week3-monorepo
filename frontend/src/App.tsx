@@ -143,7 +143,16 @@ function App() {
             <button className="btn-primary" type="submit" disabled={status === 'loading'}>
               {status === 'loading' ? 'Please wait...' : copy.cta}
             </button>
-            {message && <p className={`status-message ${status}`}>{message}</p>}
+            {message && (
+              <p
+                className={`status-message ${status}`}
+                role={status === 'error' ? 'alert' : 'status'}
+                aria-live={status === 'error' ? 'assertive' : 'polite'}
+                aria-atomic="true"
+              >
+                {message}
+              </p>
+            )}
           </form>
 
           <div className="auth-switch">
