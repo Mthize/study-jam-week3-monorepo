@@ -6,12 +6,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { compare, hash } from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
+import type { Request } from 'express';
 import { DRIZZLE } from '../database/database.module';
 import * as schema from '../database/schema';
-import { users } from '../database/schema';
+import { users, oauthCodes } from '../database/schema';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { decodeOAuthState } from './oauth-state';
@@ -77,8 +79,8 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
-  async handleOAuthCallback(profile: OAuthProfile | undefined, state?: string) {
-    const redirectBase = this.resolveRedirectUrl(state);
+  async handleOAuthCallback(profile: OAuthProfile | undefined, state?: string, request?: Request) {
+    const redirectBase = this.resolveRedirectUrl(state, request);
 
     if (!profile) {
       return this.buildRedirectUrl(redirectBase, {
@@ -89,10 +91,11 @@ export class AuthService {
 
     try {
       const authResponse = await this.handleOAuthLogin(profile);
+      const code = await this.generateOAuthCode(authResponse.data.user.id, profile.provider);
       return this.buildRedirectUrl(redirectBase, {
         oauth: 'success',
         provider: profile.provider,
-        token: authResponse.data.token,
+        code,
       });
     } catch (error) {
       const message = error instanceof Error && error.message ? error.message : 'OAuth login failed.';
@@ -124,6 +127,20 @@ export class AuthService {
     }
 
     if (user) {
+      const isLocalAccount = user.passwordHash !== null;
+
+      if (isLocalAccount) {
+        if (profile.avatarUrl && user.avatarUrl !== profile.avatarUrl) {
+          await this.db
+            .update(users)
+            .set({ avatarUrl: profile.avatarUrl, updatedAt: new Date() })
+            .where(eq(users.id, user.id));
+        }
+        throw new BadRequestException(
+          'An account with this email already exists. Please sign in with your email and password, then link your Google/GitHub account from your profile settings.',
+        );
+      }
+
       const updates: Partial<UserInsert> = {};
       if (user.authProvider !== profile.provider) {
         updates.authProvider = profile.provider;
@@ -163,6 +180,49 @@ export class AuthService {
     return this.buildAuthResponse(created);
   }
 
+  private async generateOAuthCode(userId: number, provider: string): Promise<string> {
+    const code = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await this.db.insert(oauthCodes).values({
+      code,
+      userId,
+      provider,
+      expiresAt,
+    });
+
+    return code;
+  }
+
+  async exchangeCodeForToken(code: string) {
+    const codeRecord = await this.db.query.oauthCodes.findFirst({
+      where: and(eq(oauthCodes.code, code), isNull(oauthCodes.usedAt)),
+    });
+
+    if (!codeRecord) {
+      throw new UnauthorizedException('Invalid or expired code.');
+    }
+
+    if (codeRecord.expiresAt < new Date()) {
+      throw new UnauthorizedException('Code has expired.');
+    }
+
+    await this.db
+      .update(oauthCodes)
+      .set({ usedAt: new Date() })
+      .where(eq(oauthCodes.id, codeRecord.id));
+
+    const user = await this.db.query.users.findFirst({
+      where: eq(users.id, codeRecord.userId),
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+
+    return this.buildAuthResponse(user);
+  }
+
   private buildAuthResponse(user: User) {
     const token = this.jwtService.sign({ sub: user.id, email: user.email });
 
@@ -188,9 +248,21 @@ export class AuthService {
     };
   }
 
-  private resolveRedirectUrl(state?: string) {
+  private resolveRedirectUrl(state?: string, request?: Request) {
     const decoded = decodeOAuthState(state);
-    const requested = decoded?.redirectUrl;
+    
+    if (!decoded || !decoded.redirectUrl) {
+      return this.getDefaultFrontendUrl();
+    }
+
+    if (request?.cookies?.oauth_nonce) {
+      const payload = JSON.parse(Buffer.from(state ?? '', 'base64url').toString('utf8'));
+      if (!payload || payload.nonce !== request.cookies.oauth_nonce) {
+        return this.getDefaultFrontendUrl();
+      }
+    }
+
+    const requested = decoded.redirectUrl;
     if (requested && this.isAllowedRedirect(requested)) {
       return requested;
     }

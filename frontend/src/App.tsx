@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import './App.css'
-import { API_BASE_URL, loginUser, registerUser } from './lib/api'
+import { API_BASE_URL, exchangeOAuthCode, loginUser, registerUser } from './lib/api'
 import { AuthLayout } from './components/auth/AuthLayout'
 import { AuthBrand } from './components/auth/AuthBrand'
 import { SocialAuthButtons } from './components/auth/SocialAuthButtons'
@@ -105,26 +105,36 @@ function App() {
     const oauthStatus = params.get('oauth')
     if (!oauthStatus) return
 
-    if (oauthStatus === 'success') {
-      const token = params.get('token')
-      const provider = params.get('provider')
-      if (token) {
-        persistToken(token)
-        setStatus('success')
-        setMessage(`Signed in with ${formatProviderLabel(provider)}.`)
+    const processOAuthResult = async () => {
+      if (oauthStatus === 'success') {
+        const code = params.get('code')
+        const provider = params.get('provider')
+        if (code) {
+          try {
+            const response = await exchangeOAuthCode(code)
+            persistToken(response.data.token)
+            setStatus('success')
+            setMessage(`Signed in with ${formatProviderLabel(provider)}.`)
+          } catch (error) {
+            setStatus('error')
+            setMessage(error instanceof Error ? error.message : 'Failed to complete OAuth login.')
+          }
+        } else {
+          setStatus('error')
+          setMessage('OAuth login completed without a code.')
+        }
       } else {
+        const errorMessage = params.get('message')
         setStatus('error')
-        setMessage('OAuth login completed without a token.')
+        setMessage(errorMessage || 'OAuth login failed.')
       }
-    } else {
-      const errorMessage = params.get('message')
-      setStatus('error')
-      setMessage(errorMessage || 'OAuth login failed.')
+
+      setShowEmailForm(false)
+      const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash}`
+      window.history.replaceState({}, document.title, cleanUrl)
     }
 
-    setShowEmailForm(false)
-    const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash}`
-    window.history.replaceState({}, document.title, cleanUrl)
+    processOAuthResult()
   }, [])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {

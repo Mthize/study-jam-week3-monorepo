@@ -1,8 +1,10 @@
 import { ExecutionContext, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
-import type { Request } from 'express';
-import { encodeOAuthState } from '../oauth-state';
+import type { Request, Response } from 'express';
+import { encodeOAuthState, generateOAuthNonce } from '../oauth-state';
+
+const NONCE_COOKIE_NAME = 'oauth_nonce';
 
 @Injectable()
 export class GitHubOAuthGuard extends AuthGuard('github') {
@@ -19,9 +21,22 @@ export class GitHubOAuthGuard extends AuthGuard('github') {
 
   getAuthenticateOptions(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<Request>();
+    const response = context.switchToHttp().getResponse<Response>();
     const redirect = typeof request.query.redirect === 'string' ? request.query.redirect : undefined;
-    const state = encodeOAuthState({ redirectUrl: redirect });
-    return state ? { state } : undefined;
+    
+    if (redirect) {
+      const nonce = generateOAuthNonce();
+      response.cookie(NONCE_COOKIE_NAME, nonce, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 600000,
+      });
+      const state = encodeOAuthState(redirect, nonce);
+      return state ? { state } : undefined;
+    }
+    
+    return undefined;
   }
 
   private isConfigured() {
