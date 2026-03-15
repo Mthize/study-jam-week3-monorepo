@@ -151,6 +151,13 @@
   border-color: rgba(255, 255, 255, 0.18);
 }
 
+.btn-social:disabled,
+.btn-social--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .btn-social:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
@@ -167,7 +174,7 @@
   width: 18px;
   height: 18px;
   display: block;
-  color: currentColor;
+  color: currentcolor;
 }
 
 .social-label {
@@ -221,21 +228,29 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  animation: fadeIn 0.3s ease;
+  animation: fade-in 0.3s ease;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .input-group-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  width: 100%;
 }
 
 .input-group-row .input-group {
-  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .input-group-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .input-group {
