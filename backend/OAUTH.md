@@ -9,19 +9,39 @@ The frontend then exchanges this code for a JWT via `POST /auth/exchange` with `
 
 ## Required environment variables
 
-Set the following variables (Secret Manager in production) before starting the backend or deploying to Cloud Run:
+Set the following variables for Cloud Run deployment. Client IDs and secrets must be stored in Secret Manager:
 
-| Name | Purpose |
-| --- | --- |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `GOOGLE_CALLBACK_URL` | Public callback (e.g. `https://backend.example.com/auth/google/callback`) |
-| `GITHUB_CLIENT_ID` | GitHub OAuth app client ID |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret |
-| `GITHUB_CALLBACK_URL` | Public callback (e.g. `https://backend.example.com/auth/github/callback`) |
-| `FRONTEND_URL` | Base URL the backend redirects the browser to after OAuth (e.g. `https://frontend.example.com`) |
-| `FRONTEND_ORIGINS` | Comma-delimited list of allowed browser origins for CORS |
-| `OAUTH_STATE_SECRET` | Secret used to sign OAuth state payloads (HMAC-SHA256). Generate a secure 32+ byte random string. Falls back to JWT_SECRET if not set. |
+| Name | Purpose | Storage |
+| --- | --- | --- |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | Secret Manager (`backend-google-client-id`) |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | Secret Manager (`backend-google-client-secret`) |
+| `GOOGLE_CALLBACK_URL` | Public callback URL | Env var |
+| `GITHUB_CLIENT_ID` | GitHub OAuth app client ID | Secret Manager (`backend-github-client-id`) |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret | Secret Manager (`backend-github-client-secret`) |
+| `GITHUB_CALLBACK_URL` | Public callback URL | Env var |
+| `FRONTEND_URL` | Base URL for OAuth redirects | Env var |
+| `FRONTEND_ORIGINS` | Allowed browser origins for CORS | Env var |
+| `OAUTH_STATE_SECRET` | Secret for signing OAuth state (HMAC-SHA256) | Secret Manager (`backend-oauth-state-secret`) |
+
+## Secret Manager secret names
+
+Create or update these secrets in GCP Secret Manager:
+
+- `backend-google-client-id` - Google OAuth client ID
+- `backend-google-client-secret` - Google OAuth client secret
+- `backend-github-client-id` - GitHub OAuth client ID
+- `backend-github-client-secret` - GitHub OAuth client secret
+- `backend-oauth-state-secret` - OAuth state signing secret (32+ byte random string)
+
+## Cloud Run callback values (current deployment)
+
+The production-like Cloud Run URLs for this project are fixed. Configure your Google and GitHub apps with the exact callback URLs listed below and mirror them in the backend deployment variables/secrets:
+
+- Google callback: `https://backend-305659654950.africa-south1.run.app/auth/google/callback`
+- GitHub callback: `https://backend-305659654950.africa-south1.run.app/auth/github/callback`
+- Frontend URL: `https://frontend-305659654950.africa-south1.run.app`
+
+Whenever the Cloud Run backend domain changes, update both provider consoles and the `GOOGLE_CALLBACK_URL` / `GITHUB_CALLBACK_URL` env vars before redeploying.
 
 Callbacks **must** use HTTPS for Cloud Run deployments. Local development defaults:
 
@@ -45,13 +65,27 @@ Callbacks **must** use HTTPS for Cloud Run deployments. Local development defaul
 3. Authorization callback URL: `https://<cloud-run-backend-domain>/auth/github/callback` plus any local callback you need (GitHub only accepts a single value, so update it when testing locally or use a dev app).
 4. After creating the app, generate a client secret and store both `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` securely.
 
+## Runtime availability check
+
+The backend exposes `GET /auth/providers`, which returns `{ google: { enabled: boolean }, github: { enabled: boolean } }`. The frontend uses this endpoint to disable any provider that is not configured. If the endpoint reports `enabled: false`, the service will log the missing env vars at startup—fix the configuration before re-enabling the button.
+
 ## Cloud Run deployment checklist
 
-1. Store each OAuth secret plus `JWT_SECRET` and database credentials inside Secret Manager.
-2. When templating the Cloud Run service, surface the environment variables listed above. Remember to append the Cloud Run frontend URL to `FRONTEND_ORIGINS` so its origin is allowed for CORS and redirects.
+1. Store each OAuth secret in Secret Manager:
+   - `backend-google-client-id`
+   - `backend-google-client-secret`
+   - `backend-github-client-id`
+   - `backend-github-client-secret`
+   - `backend-oauth-state-secret` (generate a secure 32+ byte random string)
+   - Plus existing secrets: `backend-db-password`, `backend-jwt-secret`
+2. When deploying to Cloud Run, pass the callback URLs as environment variables:
+   - `GOOGLE_CALLBACK_URL=https://backend-305659654950.africa-south1.run.app/auth/google/callback`
+   - `GITHUB_CALLBACK_URL=https://backend-305659654950.africa-south1.run.app/auth/github/callback`
+   - `FRONTEND_URL=https://frontend-305659654950.africa-south1.run.app`
 3. Update the Google and GitHub console entries with the Cloud Run callback URLs before deploying, otherwise the providers will reject the redirected request.
-4. Redeploy the backend (`gcloud run deploy ...`) and confirm `/auth/google` and `/auth/github` redirect correctly.
-5. Redeploy the frontend afterwards so it is aware of the new OAuth flows and handles the query parameters.
+4. Redeploy the backend and confirm `/auth/google` and `/auth/github` redirect correctly.
+5. Check backend startup logs for "Google OAuth configured: yes" and "GitHub OAuth configured: yes".
+6. Redeploy the frontend afterwards so it is aware of the new OAuth flows and handles the query parameters.
 
 ## Manual verification
 

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
 import { encodeOAuthState, generateOAuthNonce } from '../oauth-state';
+import { isOAuthProviderEnabled } from '../oauth-config';
 
 const NONCE_COOKIE_NAME = 'oauth_nonce';
 
@@ -40,10 +41,6 @@ export class GitHubOAuthGuard extends AuthGuard('github') {
   }
 
   private isConfigured() {
-    return (
-      !!this.configService.get<string>('GITHUB_CLIENT_ID') &&
-      !!this.configService.get<string>('GITHUB_CLIENT_SECRET') &&
-      !!this.configService.get<string>('GITHUB_CALLBACK_URL')
-    );
+    return isOAuthProviderEnabled(this.configService, 'github');
   }
 }

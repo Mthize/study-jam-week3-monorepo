@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect } from 'react'
 import './App.css'
-import { API_BASE_URL, exchangeOAuthCode, loginUser, registerUser } from './lib/api'
+import { API_BASE_URL, exchangeOAuthCode, fetchOAuthProviders, loginUser, registerUser } from './lib/api'
 import { AuthLayout } from './components/auth/AuthLayout'
 import { AuthBrand } from './components/auth/AuthBrand'
 import { SocialAuthButtons } from './components/auth/SocialAuthButtons'
 import { AuthDivider } from './components/auth/AuthDivider'
 import { EmailAuthButton } from './components/auth/EmailAuthButton'
 import { AuthForm } from './components/auth/AuthForm'
+import type { OAuthProvidersResponse } from './lib/types'
 
 type Mode = 'register' | 'login'
 
@@ -39,6 +40,8 @@ function App() {
   const [form, setForm] = useState(initialForm)
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
+  const [providerAvailability, setProviderAvailability] = useState<OAuthProvidersResponse | null>(null)
+  const [providerWarning, setProviderWarning] = useState('')
 
   const isRegister = mode === 'register'
   const shouldShowStatus = Boolean(message && status !== 'idle')
@@ -82,6 +85,14 @@ function App() {
     if (!API_BASE_URL) {
       setStatus('error')
       setMessage('API base URL is not configured. Set VITE_API_BASE_URL to continue.')
+      return
+    }
+
+    const providerStatus = providerAvailability?.[provider]
+    if (providerStatus && providerStatus.enabled === false) {
+      const warning = providerStatus.message || `${formatProviderLabel(provider)} sign-in is unavailable.`
+      setStatus('error')
+      setMessage(warning)
       return
     }
 
@@ -137,6 +148,45 @@ function App() {
     processOAuthResult()
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    async function loadProviders() {
+      try {
+        const availability = await fetchOAuthProviders()
+        if (cancelled) return
+        setProviderAvailability(availability)
+        const unavailable = (['google', 'github'] as const).filter((key) => availability[key]?.enabled === false)
+        if (unavailable.length > 0) {
+          const providerNames = unavailable.map((key) => formatProviderLabel(key)).join(' and ')
+          const providerMessage = unavailable
+            .map((key) => availability[key]?.message)
+            .find((value) => Boolean(value))
+          setProviderWarning(
+            providerMessage ||
+              `${providerNames} sign-in is temporarily unavailable. Please use email login instead.`,
+          )
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Unable to load OAuth provider availability', error)
+        }
+      }
+    }
+
+    loadProviders()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!providerWarning) {
+      return
+    }
+    setStatus('error')
+    setMessage(providerWarning)
+  }, [providerWarning])
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setStatus('loading')
@@ -169,6 +219,7 @@ function App() {
             onGitHubClick={() => handleOAuthRedirect('github')}
             onGoogleClick={() => handleOAuthRedirect('google')}
             disabled={status === 'loading'}
+            availability={providerAvailability ?? undefined}
           />
           {shouldShowStatus && (
             <p

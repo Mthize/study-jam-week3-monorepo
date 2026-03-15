@@ -1,14 +1,29 @@
+type ProviderAvailability = {
+  enabled: boolean;
+  message?: string;
+};
+
 type SocialAuthButtonsProps = {
   onGitHubClick?: () => void;
   onGoogleClick?: () => void;
   disabled?: boolean;
+  availability?: Partial<Record<'github' | 'google', ProviderAvailability>>;
 };
 
 const noop = () => {};
 
-export function SocialAuthButtons({ onGitHubClick = noop, onGoogleClick = noop, disabled = false }: SocialAuthButtonsProps) {
-  const githubDisabled = disabled;
-  const googleDisabled = disabled;
+export function SocialAuthButtons({
+  onGitHubClick = noop,
+  onGoogleClick = noop,
+  disabled = false,
+  availability,
+}: SocialAuthButtonsProps) {
+  const githubStatus = availability?.github;
+  const googleStatus = availability?.google;
+  const githubDisabled = disabled || githubStatus?.enabled === false;
+  const googleDisabled = disabled || googleStatus?.enabled === false;
+  const githubTitle = githubDisabled ? githubStatus?.message : undefined;
+  const googleTitle = googleDisabled ? googleStatus?.message : undefined;
 
   return (
     <div className="social-auth-buttons" role="group" aria-label="Continue with a provider">
@@ -18,6 +33,7 @@ export function SocialAuthButtons({ onGitHubClick = noop, onGoogleClick = noop, 
         onClick={onGitHubClick}
         disabled={githubDisabled}
         aria-disabled={githubDisabled}
+        title={githubTitle}
       >
         <span className="social-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false">
@@ -35,6 +51,7 @@ export function SocialAuthButtons({ onGitHubClick = noop, onGoogleClick = noop, 
         onClick={onGoogleClick}
         disabled={googleDisabled}
         aria-disabled={googleDisabled}
+        title={googleTitle}
       >
         <span className="social-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false">

@@ -15,6 +15,20 @@ This folder contains the assets needed to ship the NestJS backend to Google Clou
   - optional: set `DB_PASSWORD_VERSION` / `JWT_SECRET_VERSION` (defaults to `latest`).
 - Configure `FRONTEND_ORIGINS` with comma-separated origins (e.g. `https://frontend.example.com,http://localhost:5173`) so CORS stays locked down.
 
+### 1a. OAuth configuration inputs
+
+- Secret Manager (new entries):
+  - `backend-google-client-secret` → Google OAuth client secret.
+  - `backend-github-client-secret` → GitHub OAuth client secret.
+  - `backend-oauth-state-secret` → random 32+ byte string (`openssl rand -hex 32`) used for signing OAuth state payloads.
+- Environment variables to prep before deploying:
+  - `FRONTEND_URL` = `https://frontend-305659654950.africa-south1.run.app`
+  - `GOOGLE_CLIENT_ID` = Google OAuth client ID from APIs & Services.
+  - `GOOGLE_CALLBACK_URL` = `https://backend-305659654950.africa-south1.run.app/auth/google/callback`
+  - `GITHUB_CLIENT_ID` = GitHub OAuth app client ID.
+  - `GITHUB_CALLBACK_URL` = `https://backend-305659654950.africa-south1.run.app/auth/github/callback`
+  - `FRONTEND_ORIGINS` should include at least the Cloud Run frontend origin plus any local dev origins.
+
 ### 2. Artifact Registry & Image Build
 
 The helper script `cloudrun/deploy.sh` builds the backend Docker image from `backend/`, pushes it to Artifact Registry, and deploys the Cloud Run service. Key environment variables before running the script:
@@ -31,7 +45,18 @@ export DB_PASSWORD_SECRET="backend-db-password"
 export JWT_SECRET_SECRET="backend-jwt-secret"
 export DB_PASSWORD_VERSION="latest"   # optional override
 export JWT_SECRET_VERSION="latest"     # optional override
-export FRONTEND_ORIGINS="https://frontend.example.com,http://localhost:5173"
+export FRONTEND_URL="https://frontend-305659654950.africa-south1.run.app"
+export FRONTEND_ORIGINS="https://frontend-305659654950.africa-south1.run.app,http://localhost:5173"
+export GOOGLE_CLIENT_ID="your-google-client-id"
+export GOOGLE_CALLBACK_URL="https://backend-305659654950.africa-south1.run.app/auth/google/callback"
+export GITHUB_CLIENT_ID="your-github-client-id"
+export GITHUB_CALLBACK_URL="https://backend-305659654950.africa-south1.run.app/auth/github/callback"
+export GOOGLE_CLIENT_SECRET_SECRET="backend-google-client-secret"
+export GITHUB_CLIENT_SECRET_SECRET="backend-github-client-secret"
+export OAUTH_STATE_SECRET_SECRET="backend-oauth-state-secret"
+export GOOGLE_CLIENT_SECRET_VERSION="latest"
+export GITHUB_CLIENT_SECRET_VERSION="latest"
+export OAUTH_STATE_SECRET_VERSION="latest"
 # optional overrides
 # export IMAGE_TAG="manual-tag"
 # export ALLOW_UNAUTHENTICATED="true"
@@ -82,6 +107,16 @@ curl -sSf -X POST https://<cloud-run-url>/auth/register \
 curl -sSf -X POST https://<cloud-run-url>/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"cloud.run@example.com","password":"Passw0rd!"}'
+
+curl -sSf https://<cloud-run-url>/auth/providers
 ```
 
 Successful responses (200/201) complete Phase 4 and unlock front-end work.
+
+### 6. Deployment-ready checklist
+
+1. **Secrets ready** – confirm `backend-db-password`, `backend-jwt-secret`, `backend-google-client-secret`, `backend-github-client-secret`, and `backend-oauth-state-secret` exist and grant the Cloud Run runtime service account `Secret Manager Secret Accessor` plus `Cloud SQL Client`.
+2. **Env vars set** – export `FRONTEND_URL`, `FRONTEND_ORIGINS`, `GOOGLE_CLIENT_ID`, `GOOGLE_CALLBACK_URL`, `GITHUB_CLIENT_ID`, and `GITHUB_CALLBACK_URL` before running `deploy.sh`.
+3. **Callback URLs** – update Google Cloud Console + GitHub developer settings so the redirect URIs exactly match `https://backend-305659654950.africa-south1.run.app/auth/google/callback` and `/auth/github/callback`.
+4. **Deploy** – execute `./infra/backend/cloudrun/deploy.sh` (or apply `service.yaml`) and wait for the rollout to finish without errors.
+5. **Smoke tests** – `curl` `/health`, `/auth/providers`, and exercise email login + Google + GitHub logins from `https://frontend-305659654950.africa-south1.run.app`.
