@@ -4,9 +4,11 @@ type SocialAuthButtonsProps = {
   disabled?: boolean;
 };
 
-export function SocialAuthButtons({ onGitHubClick, onGoogleClick, disabled = false }: SocialAuthButtonsProps) {
-  const githubDisabled = disabled || !onGitHubClick;
-  const googleDisabled = disabled || !onGoogleClick;
+const noop = () => {};
+
+export function SocialAuthButtons({ onGitHubClick = noop, onGoogleClick = noop, disabled = false }: SocialAuthButtonsProps) {
+  const githubDisabled = disabled;
+  const googleDisabled = disabled;
 
   return (
     <div className="social-auth-buttons" role="group" aria-label="Continue with a provider">
