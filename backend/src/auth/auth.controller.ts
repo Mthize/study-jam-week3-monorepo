@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -45,7 +46,8 @@ export class AuthController {
     @Res() res: Response,
     @Query('state') state?: string,
   ) {
-    const redirectUrl = await this.authService.handleOAuthCallback(req.user, state);
+    const redirectUrl = await this.authService.handleOAuthCallback(req.user, state, req);
+    res.clearCookie('oauth_nonce');
     return res.redirect(redirectUrl);
   }
 
@@ -61,7 +63,17 @@ export class AuthController {
     @Res() res: Response,
     @Query('state') state?: string,
   ) {
-    const redirectUrl = await this.authService.handleOAuthCallback(req.user, state);
+    const redirectUrl = await this.authService.handleOAuthCallback(req.user, state, req);
+    res.clearCookie('oauth_nonce');
     return res.redirect(redirectUrl);
+  }
+
+  @Post('exchange')
+  @HttpCode(HttpStatus.OK)
+  async exchangeCode(@Body() body: { code: string }) {
+    if (!body.code) {
+      throw new BadRequestException('Code is required.');
+    }
+    return this.authService.exchangeCodeForToken(body.code);
   }
 }

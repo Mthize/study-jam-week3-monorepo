@@ -56,3 +56,10 @@ export async function loginUser(payload: LoginPayload) {
     body: JSON.stringify(payload),
   });
 }
+
+export async function exchangeOAuthCode(code: string) {
+  return request<AuthResponse>('/auth/exchange', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+}

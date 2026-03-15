@@ -1,9 +1,11 @@
 # OAuth Provider Configuration
 
-The backend exposes `/auth/google` and `/auth/github` endpoints that launch provider-hosted consent screens. When the provider calls back into `/auth/:provider/callback`, the backend issues the standard JWT the email/password flow uses and redirects back to the frontend with one of the following query parameters:
+The backend exposes `/auth/google` and `/auth/github` endpoints that launch provider-hosted consent screens. When the provider calls back into `/auth/:provider/callback`, the backend creates a user (if needed) and issues a short-lived one-time code, then redirects back to the frontend with:
 
-- `?oauth=success&provider=google&token=<JWT>`
+- `?oauth=success&provider=google&code=<one-time-code>`
 - `?oauth=error&message=<error message>`
+
+The frontend then exchanges this code for a JWT via `POST /auth/exchange` with `{ "code": "<code>" }`, which returns the same `AuthResponse` format used by the email/password flow. This avoids exposing the JWT in the browser URL.
 
 ## Required environment variables
 
@@ -19,6 +21,7 @@ Set the following variables (Secret Manager in production) before starting the b
 | `GITHUB_CALLBACK_URL` | Public callback (e.g. `https://backend.example.com/auth/github/callback`) |
 | `FRONTEND_URL` | Base URL the backend redirects the browser to after OAuth (e.g. `https://frontend.example.com`) |
 | `FRONTEND_ORIGINS` | Comma-delimited list of allowed browser origins for CORS |
+| `OAUTH_STATE_SECRET` | Secret used to sign OAuth state payloads (HMAC-SHA256). Generate a secure 32+ byte random string. Falls back to JWT_SECRET if not set. |
 
 Callbacks **must** use HTTPS for Cloud Run deployments. Local development defaults:
 
@@ -54,5 +57,5 @@ Callbacks **must** use HTTPS for Cloud Run deployments. Local development defaul
 
 1. Start the backend with `npm run start:dev` after exporting the required env vars.
 2. Start the frontend (`npm run dev`) pointing `VITE_API_BASE_URL` to the backend.
-3. Trigger both buttons and ensure the browser lands back on `FRONTEND_URL` with `oauth=success` and `token` present.
+3. Trigger both buttons and ensure the browser lands back on `FRONTEND_URL` with `oauth=success` and a `code` parameter present. The frontend will automatically exchange this code for a JWT.
 4. Repeat with invalid credentials (e.g. revoke provider email access) to verify `oauth=error` flows bubble up a readable message in the UI.
