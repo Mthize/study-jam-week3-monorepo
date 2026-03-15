@@ -1,4 +1,9 @@
-import type { AuthResponse, LoginPayload, RegisterPayload } from './types';
+import type {
+  AuthResponse,
+  LoginPayload,
+  OAuthProvidersResponse,
+  RegisterPayload,
+} from './types';
 
 const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
 const runtimeBase =
@@ -61,5 +66,11 @@ export async function exchangeOAuthCode(code: string) {
   return request<AuthResponse>('/auth/exchange', {
     method: 'POST',
     body: JSON.stringify({ code }),
+  });
+}
+
+export async function fetchOAuthProviders() {
+  return request<OAuthProvidersResponse>('/auth/providers', {
+    method: 'GET',
   });
 }

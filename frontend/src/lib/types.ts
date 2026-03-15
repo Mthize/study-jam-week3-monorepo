@@ -36,6 +36,16 @@ export interface ApiErrorShape {
   statusCode?: number;
 }
 
+export interface OAuthProviderAvailability {
+  enabled: boolean;
+  message?: string;
+}
+
+export interface OAuthProvidersResponse {
+  google: OAuthProviderAvailability;
+  github: OAuthProviderAvailability;
+}
+
 declare global {
   interface Window {
     __APP_CONFIG__?: {

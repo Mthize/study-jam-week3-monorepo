@@ -34,6 +34,11 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @Get('providers')
+  getProviderAvailability() {
+    return this.authService.getOAuthProviders();
+  }
+
   @Get('google')
   @UseGuards(GoogleOAuthGuard)
   // eslint-disable-next-line @typescript-eslint/no-empty-function

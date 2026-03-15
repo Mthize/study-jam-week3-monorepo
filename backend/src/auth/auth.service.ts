@@ -17,6 +17,7 @@ import { users, oauthCodes } from '../database/schema';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { decodeOAuthState } from './oauth-state';
+import { getOAuthProviderStatuses, type OAuthProviderStatus } from './oauth-config';
 import type { OAuthProfile } from './types/oauth.types';
 
 type User = typeof users.$inferSelect;
@@ -77,6 +78,14 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  getOAuthProviders() {
+    const statuses = getOAuthProviderStatuses(this.configService);
+    return {
+      google: this.mapProviderAvailability(statuses.google),
+      github: this.mapProviderAvailability(statuses.github),
+    };
   }
 
   async handleOAuthCallback(profile: OAuthProfile | undefined, state?: string, request?: Request) {
@@ -320,5 +329,14 @@ export class AuthService {
     }
 
     return url.toString();
+  }
+
+  private mapProviderAvailability(status: OAuthProviderStatus) {
+    return {
+      enabled: status.enabled,
+      message: status.enabled
+        ? undefined
+        : `${status.label} sign-in is temporarily unavailable. Please use email login instead.`,
+    };
   }
 }
